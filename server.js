@@ -148,7 +148,7 @@ router.route('/movie')
     )//save
     .post( authJwtController.isAuthenticated, function (req, res) {
         console.log(req.body);
-        if(req.body.actor.length <= 3)
+        if(req.body.actor.length < 3)
             return res.json({status: 404, message: 'not enough actors'});
 
         var movieNew = new Movie();
