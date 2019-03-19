@@ -3,6 +3,7 @@ var bodyParser = require('body-parser');
 var passport = require('passport');
 var authJwtController = require('./auth_jwt');
 var User = require('./Users');
+var Movie = require('./Movie');
 var jwt = require('jsonwebtoken');
 
 var app = express();
@@ -95,5 +96,100 @@ router.post('/signin', function(req, res) {
     });
 });
 
+router.route('/movie')
+    //find
+    .get(authJwtController.isAuthenticated, function (req, res) {
+        console.log(req.body);
+        Movie.find({ title: req.body.title }).select('title year genre actor').exec(function(err, movie) {
+            console.log("sending body");
+            if (err) {
+                return res.json({
+                    status: 500, message: "GET movies", msg: 'something went wrong'
+                })
+            }
+            else if ( movie.length === 0)
+            {
+                return res.json({
+                    status: 404, message: "GET movies", msg: 'no movie found'
+                })
+            }
+            else{
+
+                return res.json({
+                    status: 200, message: "GET movies",
+                    msg: "The movie was found, now displaying information about the movie",
+                    movie: movie
+                })
+            }
+        })
+    })
+    //updateOne
+    .put(authJwtController.isAuthenticated,function (req, res) {
+        var movie= new Movie();
+        movie.title = req.body.title;
+        movie.year = req.body.year;
+        movie.genre = req.body.genre;
+        movie.actor = req.body.actor;
+
+        Movie.updateOne({title: movie.title}).exec(function (err) {
+            if(err){
+                return res.json({
+                    status: 400, message: "Update movies", msg: "movie could not be updated"
+                })
+            }
+            else{
+                return res.json({
+                    status: 200, message: "Movie Updated", msg: "Successfully updated",
+                    UpdatedMovie: movie
+                })
+            }
+        })
+        }
+    )//save
+    .post( authJwtController.isAuthenticated, function (req, res) {
+        console.log(req.body);
+        if(req.body.actor.length <= 3)
+            return res.json({status: 404, message: 'not enough actors'});
+
+        var movieNew = new Movie();
+        movieNew.title = req.body.title;
+        movieNew.year = req.body.year;
+        movieNew.genre = req.body.genre;
+        movieNew.actor = req.body.actor;
+
+        movieNew.save(function (err) {
+
+            if (err) {
+                // duplicate entry
+                if (err.code == 11000)
+                    return res.json({status: 404, message: 'A movie with that title already exists. '});
+                else
+                    return res.json({status: 404, message: 'Missing movie information.'});
+            }
+            res.json({status: 200, message: 'Movie created!'});
+        });
+    })
+    //findOneAndDelete
+    .delete( authJwtController.isAuthenticated, function (req,res) {
+        var movie = Movie();
+        movie.title = req.body.title;
+        Movie.findOneAndDelete({title: movie.title}).exec(function (err) {
+            if(err)
+            {
+                return res.json({status: 404, message: 'movie could not be deleted'})
+            }
+            else
+            {
+                return res.json({status: 200, message: 'Movie deleted'
+                })
+            }
+        })
+    });
+
 app.use('/', router);
+
+app.use(function(req, res){
+    res.status(404).send({success: false, msg: 'http method not supported'});
+});
+
 app.listen(process.env.PORT || 8080);
